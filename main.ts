@@ -9,7 +9,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -51,3 +51,19 @@ writeFileSync(
     game_path_max_bytes: 1000,
   }),
 );
+
+// Read the dossier back and check it is what the judge will read: valid JSON,
+// the screenshots we handed in, and a non-empty text of the game's source.
+// A corrupt or truncated dossier would fail the gate, so fail loudly here.
+const dossierPath = join(out, 'dossier.json');
+const dossier = JSON.parse(readFileSync(dossierPath, 'utf8')) as {
+  images?: unknown[];
+  text?: string;
+};
+if (!Array.isArray(dossier.images) || dossier.images.length !== shots.length) {
+  throw new Error(`dossier.json holds ${dossier.images?.length ?? 0} images, expected ${shots.length}`);
+}
+if (typeof dossier.text !== 'string' || dossier.text.length === 0) {
+  throw new Error('dossier.json holds no source text');
+}
+console.log(`dossier.json OK: ${statSync(dossierPath).size} bytes, ${dossier.images.length} screenshots, ${dossier.text.length} chars of source`);
