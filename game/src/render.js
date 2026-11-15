@@ -83,8 +83,6 @@ export function createRenderer(canvas) {
   const finalLabel = cachedLabel('Score ');
   const timeLabel = cachedLabel('Time ');
 
-  let prevLives = LIVES;
-  let flashStart = -10000;
   let layoutDepth = -1;
   let layout = null;
 
@@ -626,9 +624,6 @@ export function createRenderer(canvas) {
     const elapsed = state.elapsed ?? 0;
     const pal = depthPalette(state.depthIndex | 0);
 
-    if ((state.lives ?? LIVES) < prevLives) flashStart = performance.now();
-    prevLives = state.lives ?? LIVES;
-
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.fillStyle = '#04141a';
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -649,10 +644,13 @@ export function createRenderer(canvas) {
     drawParticles(state);
     drawVignette(pal, elapsed, state);
 
-    // Red flash right after a sting, fading fast.
-    const flashAge = performance.now() - flashStart;
-    if (flashAge >= 0 && flashAge < 350) {
-      context.fillStyle = `rgba(255,40,50,${0.22 * (1 - flashAge / 350)})`;
+    // Red flash right after a sting, fading with the screen shake: both
+    // ride state.shake (game time, set to 1 by hurt() and decayed by the
+    // world), so a staged screenshot renders the same frame every load.
+    // (A wall-clock flash here made ?shot=play&seed=7 differ run to run.)
+    const flash = Math.min(1, (state.shake ?? 0) * 2);
+    if (flash > 0) {
+      context.fillStyle = `rgba(255,40,50,${0.22 * flash})`;
       context.fillRect(0, 0, FIELD.width, FIELD.height);
     }
 
